@@ -5,6 +5,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Функція отримання збереженого стану (повертає об'єкт з масивами ID)
     const getSavedState = () => {
+        // Використовуємо коректні ключі для кошика та бажань
         const cart = JSON.parse(localStorage.getItem('cartItems')) || [];
         const wish = JSON.parse(localStorage.getItem('wishItems')) || [];
         return { cart, wish };
@@ -12,12 +13,12 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Функція збереження стану (оновлює LocalStorage)
     const saveState = ({ cart, wish }) => {
-        if (cart) localStorage.setItem('cartItems', JSON.stringify(cart));
-        if (wish) localStorage.setItem('wishItems', JSON.stringify(wish));
+        if (cart !== undefined) localStorage.setItem('cartItems', JSON.stringify(cart));
+        if (wish !== undefined) localStorage.setItem('wishItems', JSON.stringify(wish));
     };
 
     // --------------------------------------------------------
-    // II. Навігація та Логотип (Без змін)
+    // II. Навігація та Логотип
     // --------------------------------------------------------
     const navMapping = [
         { id: 'nav-wish', url: 'wish.html' },
@@ -52,7 +53,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const removeCard = (productCard, message) => {
         productCard.style.opacity = '0';
         setTimeout(() => productCard.remove(), 300);
-        alert(message);
+        if (message) alert(message);
     };
     
     // 1. Додавання/Видалення зі списку бажань (Лайки)
@@ -61,25 +62,24 @@ document.addEventListener('DOMContentLoaded', () => {
             event.preventDefault();
             
             const productCard = heartIcon.closest('.product-card');
-            const productTitle = productCard.querySelector('.product-title').textContent;
-            // Використовуємо title як унікальний ID для простоти
-            const productID = productTitle; 
+            const productTitle = productCard.querySelector('.product-title').textContent.trim();
+            const productID = productTitle; // Використовуємо title як унікальний ID
             
             let { wish } = getSavedState();
 
             if (heartIcon.classList.contains('far')) {
-                // ДОДАВАННЯ: змінюємо стан, додаємо в сховище
+                // ДОДАВАННЯ:
                 heartIcon.classList.remove('far');
                 heartIcon.classList.add('fas');
                 if (!wish.includes(productID)) wish.push(productID);
                 alert(`"${productTitle}" додано до списку бажань! ❤️`);
             } else {
-                // ВИДАЛЕННЯ: змінюємо стан, видаляємо зі сховища
+                // ВИДАЛЕННЯ:
                 heartIcon.classList.remove('fas');
                 heartIcon.classList.add('far');
-                wish = wish.filter(id => id !== productID); // Фільтруємо зі списку
+                wish = wish.filter(id => id !== productID); // Видаляємо зі сховища
                 
-                // Якщо ми на сторінці 'wish.html', видаляємо картку
+                // Якщо ми на сторінці 'wish.html', видаляємо картку візуально
                 if (window.location.pathname.includes('wish.html')) {
                     removeCard(productCard, `"${productTitle}" видалено зі списку бажань. 💔`);
                 } else {
@@ -93,7 +93,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // 2. Додавання товару до кошика (КНОПКА "до кошику")
     document.querySelectorAll('.btn-card:not(.btn-delete-cart)').forEach(cartButton => {
         cartButton.addEventListener('click', () => {
-            const productTitle = cartButton.closest('.product-card').querySelector('.product-title').textContent;
+            const productTitle = cartButton.closest('.product-card').querySelector('.product-title').textContent.trim();
             const productID = productTitle;
 
             let { cart } = getSavedState();
@@ -111,7 +111,7 @@ document.addEventListener('DOMContentLoaded', () => {
     document.querySelectorAll('.btn-delete-cart').forEach(deleteButton => {
         deleteButton.addEventListener('click', () => {
             const productCard = deleteButton.closest('.product-card');
-            const productTitle = productCard.querySelector('.product-title').textContent;
+            const productTitle = productCard.querySelector('.product-title').textContent.trim();
             const productID = productTitle;
             
             let { cart } = getSavedState();
@@ -132,22 +132,22 @@ document.addEventListener('DOMContentLoaded', () => {
             saveState({ cart: [] }); 
             // Візуально видаляємо всі картки на сторінці кошика
             if (window.location.pathname.includes('card.html')) {
-                document.querySelectorAll('.product-card').forEach(card => card.remove());
+                document.querySelectorAll('.product-card').forEach(card => removeCard(card, null));
             }
         });
     });
 
     // --------------------------------------------------------
-    // IV. ЗАВАНТАЖЕННЯ СТАНУ ПРИ ЗАПУСКУ СТОРІНКИ
+    // IV. ЗАВАНТАЖЕННЯ ТА ФІЛЬТРАЦІЯ СТАНУ ПРИ ЗАПУСКУ СТОРІНКИ
     // --------------------------------------------------------
     
-    // Функція, яка запускається один раз при завантаженні сторінки
     const loadState = () => {
         const { cart, wish } = getSavedState();
         const currentPage = window.location.pathname.split('/').pop();
         
         document.querySelectorAll('.product-card').forEach(card => {
-            const productTitle = card.querySelector('.product-title').textContent;
+            // Використовуємо .trim() для надійності
+            const productTitle = card.querySelector('.product-title').textContent.trim();
             const heartIcon = card.querySelector('.icon-heart');
             
             // 1. Оновлення стану лайків на всіх сторінках
@@ -159,12 +159,12 @@ document.addEventListener('DOMContentLoaded', () => {
                 heartIcon.classList.add('far');
             }
 
-            // 2. Видалення карток, яких немає у LocalStorage
-            if (currentPage === 'card.html' && !cart.includes(productTitle)) {
-                // Видаляємо картку, якщо ми в кошику, а товару немає у збереженому кошику
+            // 2. КРИТИЧНИЙ БЛОК: Видалення hardcoded карток, яких немає у LocalStorage
+            if (currentPage.includes('card.html') && !cart.includes(productTitle)) {
+                // Видаляємо картку, якщо ми в кошику, а товару НЕМАЄ у збереженому стані
                 card.remove();
-            } else if (currentPage === 'wish.html' && !wish.includes(productTitle)) {
-                 // Видаляємо картку, якщо ми у списку бажань, а товару немає у збереженому списку
+            } else if (currentPage.includes('wish.html') && !wish.includes(productTitle)) {
+                 // Видаляємо картку, якщо ми у списку бажань, а товару НЕМАЄ у збереженому стані
                 card.remove();
             }
         });
