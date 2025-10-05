@@ -1,6 +1,23 @@
 document.addEventListener('DOMContentLoaded', () => {
     // --------------------------------------------------------
-    // I. Навігація та Логотип (Якщо вже працює, цей блок можна залишити як є)
+    // I. ФУНКЦІЇ РОБОТИ З LOCALSTORAGE
+    // --------------------------------------------------------
+
+    // Функція отримання збереженого стану (повертає об'єкт з масивами ID)
+    const getSavedState = () => {
+        const cart = JSON.parse(localStorage.getItem('cartItems')) || [];
+        const wish = JSON.parse(localStorage.getItem('wishItems')) || [];
+        return { cart, wish };
+    };
+
+    // Функція збереження стану (оновлює LocalStorage)
+    const saveState = ({ cart, wish }) => {
+        if (cart) localStorage.setItem('cartItems', JSON.stringify(cart));
+        if (wish) localStorage.setItem('wishItems', JSON.stringify(wish));
+    };
+
+    // --------------------------------------------------------
+    // II. Навігація та Логотип (Без змін)
     // --------------------------------------------------------
     const navMapping = [
         { id: 'nav-wish', url: 'wish.html' },
@@ -14,8 +31,6 @@ document.addEventListener('DOMContentLoaded', () => {
         if (element) {
             const currentPath = window.location.pathname.split('/').pop();
             const linkHref = element.getAttribute('href').split('/').pop();
-            
-            // Логіка підсвічування
             if (currentPath === linkHref || (currentPath === '' && linkHref === 'index.html')) {
                 element.classList.add('active-nav-link');
             }
@@ -30,7 +45,7 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     // --------------------------------------------------------
-    // II. КОРЕКТНА ЛОГІКА ТОВАРІВ
+    // III. ЛОГІКА ТОВАРІВ ЗІ ЗБЕРІГАННЯМ СТАНУ
     // --------------------------------------------------------
     
     // Функція візуального видалення картки
@@ -39,56 +54,70 @@ document.addEventListener('DOMContentLoaded', () => {
         setTimeout(() => productCard.remove(), 300);
         alert(message);
     };
-
+    
     // 1. Додавання/Видалення зі списку бажань (Лайки)
-    // Шукаємо всі іконки-сердечка
     document.querySelectorAll('.icon-heart').forEach(heartIcon => {
         heartIcon.addEventListener('click', (event) => {
             event.preventDefault();
             
             const productCard = heartIcon.closest('.product-card');
             const productTitle = productCard.querySelector('.product-title').textContent;
+            // Використовуємо title як унікальний ID для простоти
+            const productID = productTitle; 
+            
+            let { wish } = getSavedState();
 
-            // Перевіряємо поточний стан: 'far' - порожнє (додати), 'fas' - заповнене (видалити)
             if (heartIcon.classList.contains('far')) {
-                // ДОДАВАННЯ ДО СПИСКУ БАЖАНЬ
+                // ДОДАВАННЯ: змінюємо стан, додаємо в сховище
                 heartIcon.classList.remove('far');
                 heartIcon.classList.add('fas');
+                if (!wish.includes(productID)) wish.push(productID);
                 alert(`"${productTitle}" додано до списку бажань! ❤️`);
             } else {
-                // ВИДАЛЕННЯ ЗІ СПИСКУ БАЖАНЬ
+                // ВИДАЛЕННЯ: змінюємо стан, видаляємо зі сховища
                 heartIcon.classList.remove('fas');
                 heartIcon.classList.add('far');
+                wish = wish.filter(id => id !== productID); // Фільтруємо зі списку
                 
-                // Якщо ми на сторінці СПИСКУ БАЖАНЬ ('wish.html'), видаляємо картку
+                // Якщо ми на сторінці 'wish.html', видаляємо картку
                 if (window.location.pathname.includes('wish.html')) {
                     removeCard(productCard, `"${productTitle}" видалено зі списку бажань. 💔`);
                 } else {
                     alert(`"${productTitle}" видалено зі списку бажань. 💔`);
                 }
             }
+            saveState({ wish }); // Зберігаємо оновлений список бажань
         });
     });
 
     // 2. Додавання товару до кошика (КНОПКА "до кошику")
-    // Селектор: .btn-card, який НЕ має класу .btn-delete-cart
     document.querySelectorAll('.btn-card:not(.btn-delete-cart)').forEach(cartButton => {
         cartButton.addEventListener('click', () => {
             const productTitle = cartButton.closest('.product-card').querySelector('.product-title').textContent;
-            alert(`"${productTitle}" додано до кошика! 🛒`);
-            // Тут також можна змінити текст кнопки, якщо товар уже в кошику
-            // cartButton.textContent = "В КОШИКУ"; 
-            // cartButton.disabled = true;
+            const productID = productTitle;
+
+            let { cart } = getSavedState();
+            if (!cart.includes(productID)) {
+                cart.push(productID);
+                saveState({ cart }); // Зберігаємо оновлений кошик
+                alert(`"${productTitle}" додано до кошика! 🛒`);
+            } else {
+                alert(`"${productTitle}" ВЖЕ у кошику!`);
+            }
         });
     });
 
     // 3. Видалення товару з кошика (КНОПКА "видалити" на card.html)
-    // Селектор: .btn-card, який МАЄ клас .btn-delete-cart
     document.querySelectorAll('.btn-delete-cart').forEach(deleteButton => {
         deleteButton.addEventListener('click', () => {
             const productCard = deleteButton.closest('.product-card');
             const productTitle = productCard.querySelector('.product-title').textContent;
+            const productID = productTitle;
             
+            let { cart } = getSavedState();
+            cart = cart.filter(id => id !== productID);
+            saveState({ cart }); // Зберігаємо оновлений кошик
+
             if (confirm(`Ви впевнені, що хочете видалити "${productTitle}" з кошика?`)) {
                 removeCard(productCard, `"${productTitle}" видалено з кошика. 🗑️`);
             }
@@ -98,8 +127,49 @@ document.addEventListener('DOMContentLoaded', () => {
     // 4. Оформлення замовлення (імітація)
     document.querySelectorAll('.btn-pay').forEach(payButton => {
         payButton.addEventListener('click', () => {
-            alert('✅ Замовлення успішно оформлено! Дякуємо за покупку.');
-            // Можна тут додати перенаправлення на index.html
+            alert('✅ Замовлення успішно оформлено! Кошик очищено.');
+            // Очищаємо кошик після успішного оформлення
+            saveState({ cart: [] }); 
+            // Візуально видаляємо всі картки на сторінці кошика
+            if (window.location.pathname.includes('card.html')) {
+                document.querySelectorAll('.product-card').forEach(card => card.remove());
+            }
         });
     });
+
+    // --------------------------------------------------------
+    // IV. ЗАВАНТАЖЕННЯ СТАНУ ПРИ ЗАПУСКУ СТОРІНКИ
+    // --------------------------------------------------------
+    
+    // Функція, яка запускається один раз при завантаженні сторінки
+    const loadState = () => {
+        const { cart, wish } = getSavedState();
+        const currentPage = window.location.pathname.split('/').pop();
+        
+        document.querySelectorAll('.product-card').forEach(card => {
+            const productTitle = card.querySelector('.product-title').textContent;
+            const heartIcon = card.querySelector('.icon-heart');
+            
+            // 1. Оновлення стану лайків на всіх сторінках
+            if (wish.includes(productTitle)) {
+                heartIcon.classList.remove('far');
+                heartIcon.classList.add('fas');
+            } else {
+                heartIcon.classList.remove('fas');
+                heartIcon.classList.add('far');
+            }
+
+            // 2. Видалення карток, яких немає у LocalStorage
+            if (currentPage === 'card.html' && !cart.includes(productTitle)) {
+                // Видаляємо картку, якщо ми в кошику, а товару немає у збереженому кошику
+                card.remove();
+            } else if (currentPage === 'wish.html' && !wish.includes(productTitle)) {
+                 // Видаляємо картку, якщо ми у списку бажань, а товару немає у збереженому списку
+                card.remove();
+            }
+        });
+    };
+
+    // Запускаємо завантаження стану
+    loadState();
 });
