@@ -1,50 +1,88 @@
 document.addEventListener('DOMContentLoaded', () => {
-    // Оновлений список посилань, який відповідає назвам ваших файлів
+    // --- Навігація та підсвічування активної сторінки ---
     const navLinks = [
         { id: 'nav-wish', url: 'wish.html' },
         { id: 'nav-catalog', url: 'catalog.html' },
         { id: 'nav-cart', url: 'card.html' },
-        { id: 'nav-login', url: 'exit.html' } // Використовуємо exit.html як сторінку входу
+        { id: 'nav-login', url: 'exit.html' } 
     ];
 
     navLinks.forEach(linkInfo => {
-        // Шукаємо елемент за ID, який ми додали в HTML
         let element = document.getElementById(linkInfo.id);
 
         if (element) {
-            
-            // --- ЛОГІКА ПЕРЕНАПРАВЛЕННЯ ВИДАЛЕНА ---
-            // Тепер навігація працює через стандартний атрибут href в HTML.
-            // Ми не додаємо event.preventDefault(), щоб не блокувати перехід.
-            
-            
-            // --- ЛОГІКА ПІДСВІЧУВАННЯ АКТИВНОЇ СТОРІНКИ ---
             const currentPath = window.location.pathname.split('/').pop();
             const linkHref = element.getAttribute('href').split('/').pop();
             
-            // Порівнюємо поточний файл із посиланням
+            // Логіка підсвічування активної сторінки (включно з кореневою index.html)
             if (currentPath === linkHref || (currentPath === '' && linkHref === 'index.html')) {
-                 // УВАГА: Для головної сторінки (index.html) може знадобитися окрема перевірка,
-                 // якщо URL закінчується на / або /#
                 element.classList.add('active-nav-link');
             }
         }
     });
 
-    // --- ДОДАТКОВА ЛОГІКА (ЛАЙКИ/КОШИК) ---
-    
+    // --- ЛОГІКА ІНТЕРАКТИВНОСТІ (Кошик та Бажання) ---
+
+    // 1. Додавання/Видалення зі списку бажань (Лайки)
     document.querySelectorAll('.icon-heart').forEach(heartIcon => {
-        heartIcon.addEventListener('click', () => {
-            heartIcon.classList.toggle('far');
-            heartIcon.classList.toggle('fas');
+        heartIcon.addEventListener('click', (event) => {
+            event.preventDefault(); // Запобігаємо переходу, якщо це посилання
+            
+            const productTitle = heartIcon.closest('.product-card').querySelector('.product-title').textContent;
+
+            // Перемикаємо клас 'fas' (заповнене серце) та 'far' (пусте серце)
+            if (heartIcon.classList.contains('far')) {
+                heartIcon.classList.remove('far');
+                heartIcon.classList.add('fas');
+                alert(`"${productTitle}" додано до списку бажань! ❤️`);
+            } else {
+                heartIcon.classList.remove('fas');
+                heartIcon.classList.add('far');
+                alert(`"${productTitle}" видалено зі списку бажань. 💔`);
+            }
         });
     });
 
-    document.querySelectorAll('.btn-card').forEach(cartButton => {
-        if (!cartButton.classList.contains('btn-delete')) {
-            cartButton.addEventListener('click', () => {
-                alert('Товар додано до кошика!');
-            });
-        }
+    // 2. Додавання товару до кошика
+    document.querySelectorAll('.btn-card:not(.btn-delete)').forEach(cartButton => {
+        cartButton.addEventListener('click', () => {
+            const productTitle = cartButton.closest('.product-card').querySelector('.product-title').textContent;
+            alert(`"${productTitle}" додано до кошика! 🛒`);
+            // Можна змінити текст кнопки після додавання
+            // cartButton.textContent = 'У КОШИКУ'; 
+        });
+    });
+
+    // 3. Видалення товару з кошика
+    document.querySelectorAll('.btn-delete').forEach(deleteButton => {
+        deleteButton.addEventListener('click', () => {
+            const productCard = deleteButton.closest('.product-card');
+            const productTitle = productCard.querySelector('.product-title').textContent;
+            
+            if (confirm(`Ви впевнені, що хочете видалити "${productTitle}" з кошика?`)) {
+                // Візуальне видалення картки
+                productCard.style.opacity = '0';
+                setTimeout(() => productCard.remove(), 300); // Приховуємо після анімації
+                alert(`"${productTitle}" видалено. 🗑️`);
+            }
+        });
+    });
+
+    // 4. Оформлення замовлення (імітація)
+    document.querySelectorAll('.btn-pay').forEach(payButton => {
+        payButton.addEventListener('click', () => {
+            // Тут має бути логіка перевірки форми та перенаправлення на сторінку оплати
+            alert('✅ Замовлення успішно оформлено! Дякуємо за покупку.');
+            // Можна перенаправити на головну сторінку
+            // window.location.href = 'index.html'; 
+        });
+    });
+
+    // 5. Перехід на головну сторінку при натисканні на ЛОГОТИП
+    document.querySelectorAll('.logo').forEach(logo => {
+        logo.style.cursor = 'pointer'; // Додаємо курсор для підказки
+        logo.addEventListener('click', () => {
+            window.location.href = 'index.html';
+        });
     });
 });
